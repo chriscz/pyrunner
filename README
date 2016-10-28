@@ -1,0 +1,7 @@
+A script for writing and automating tasks in python. It's
+a lightweight alternative to Fabricate (https://github.com/SimonAlfie/fabricate/),
+and Fabric. 
+
+It can be used in the place of shell scripts.
+
+See example.py for a full usage example.
