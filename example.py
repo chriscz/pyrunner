@@ -1,4 +1,9 @@
 """
+    Default Function
+    ----------------
+    when a function default is defined within the namespace, that 
+    function will be executed if no arguments are provided
+
     Usage Examples
     --------------
     Print out the possible commands
@@ -20,6 +25,7 @@
         $ python example.py 'foo("hello")' 'foo("bye")'
           foo says hello
           foo says bye
+
 """
 from __future__ import print_function
 from pyrunner import *

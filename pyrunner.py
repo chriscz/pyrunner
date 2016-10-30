@@ -16,6 +16,9 @@ import inspect
 from textwrap import fill
 from subprocess import Popen, PIPE, CalledProcessError
 
+# --- constants
+DEFAULT_ACTION = 'default'
+
 def run(*args, **kwargs):
     """
     Runs a command on the underlying system. 
@@ -95,7 +98,7 @@ def format_docstring(docstring, indent=' '*4):
         lines.append(fill(line, width=80, initial_indent=indent, subsequent_indent=indent))
     return '\n'.join(lines)
 
-def main(globals_dict=None, args=None):
+def main(globals_dict=None, args=None, default=DEFAULT_ACTION):
     # preprocess all the arguments
     if args is None:
         args = sys.argv[1:]
@@ -115,7 +118,9 @@ def main(globals_dict=None, args=None):
             filtered[i] = v
 
     # --- begin the execution
-    if not args: # then list the available commands
+    if not args and default in filtered:
+        exec(i, globals_dict, dict())
+    elif not args: # then list the available commands
         print("Commands")
         for name in filtered:
             value = filtered[name]
