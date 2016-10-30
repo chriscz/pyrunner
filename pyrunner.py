@@ -16,6 +16,8 @@ import inspect
 from textwrap import fill
 from subprocess import Popen, PIPE, CalledProcessError
 
+import argparse
+
 # --- constants
 DEFAULT_ACTION = 'default'
 
@@ -53,6 +55,20 @@ def run(*args, **kwargs):
     return proc.returncode, stdout, stderr
 
 # --- internally used functions
+
+def parse_args(args):
+    parser = argparse.ArgumentParser(prog='pyrunner.py', 
+                                     description='A script for writing and automating tasks in python')
+
+    parser.add_argument('function', nargs='*')
+    parser.add_argument('-l', '--list', 
+                        help='lists all the available functions',
+                        action='store_true')
+
+    return parser.parse_args(args)
+
+
+
 def _build_func_text(function, name=None):
     spec = inspect.getargspec(function)
     doc = inspect.getdoc(function)
@@ -98,44 +114,66 @@ def format_docstring(docstring, indent=' '*4):
         lines.append(fill(line, width=80, initial_indent=indent, subsequent_indent=indent))
     return '\n'.join(lines)
 
-def main(globals_dict=None, args=None, default=DEFAULT_ACTION):
+def get_functions(globals_dict, only_file=None):
+    # collect all the functions
+    this_file = os.path.abspath(__file__)
+
+    def keep_item(value):
+        dfile = lambda: inspect.getabsfile(value)
+
+        keep = True
+        keep = keep and inspect.isfunction(value)
+        keep = keep and dfile() != this_file
+        keep = keep and (not only_file or dfile() == only_file) 
+        return keep
+    
+    return dict(filter(lambda i: i if keep_item(i[1]) else None, globals_dict.items()))
+
+def action_list_functions(functions):
+    print("Commands")
+    for name in functions:
+        value = functions[name]
+        line, doc = _build_func_text(value, name)
+        print('- {}'.format(line))
+        if doc is not None:
+            print(format_docstring(doc))
+
+
+def main(globals_dict=None, args=None, commandfile=None,  default=DEFAULT_ACTION):
     # preprocess all the arguments
     if args is None:
         args = sys.argv[1:]
+    
+    parsed = parse_args(args)
 
     if globals_dict is None:
         frame = sys._getframe(1)
         globals_dict = frame.f_globals
 
-    # collect all the functions
-    values = globals().values()
-    filtered = {}
-    for i in globals_dict:
-        v = globals_dict[i]
-        if inspect.isfunction(v) and\
-           inspect.getfile(v) != __file__ and\
-           v not in values:
-            filtered[i] = v
+    if commandfile is None:
+        frame = sys._getframe(1)
+        finfo = inspect.getframeinfo(frame)
+        commandfile = os.path.abspath(finfo.filename)
+        
+    functions = get_functions(globals_dict, only_file=commandfile)
+
+    if parsed.list:
+        action_list_functions(functions)
+        sys.exit(1)
 
     # --- begin the execution
-    if not args and default in filtered:
-        exec(i, globals_dict, dict())
+    if default in functions and not args:
+        exec(default + '()', globals_dict, dict())
     elif not args: # then list the available commands
-        print("Commands")
-        for name in filtered:
-            value = filtered[name]
-            line, doc = _build_func_text(value, name)
-            print('- {}'.format(line))
-            if doc is not None:
-                print(format_docstring(doc))
+        action_list_functions(functions)
         sys.exit(1)
     else:
         # process any function calls
-        for i in args:
+        for i in parsed.function: # XXX name here is singular due to argparse
             if '(' not in i:
                 i += '()'
             name = i[:i.index('(')]
-            if name not in filtered:
+            if name not in functions:
                 print("{} is not a recognized function".format(name))
                 sys.exit(1)
             exec(i, globals_dict, dict())

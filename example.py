@@ -7,7 +7,11 @@
     Usage Examples
     --------------
     Print out the possible commands
+        $ python example.py -l 
+
+    Executes the default function
         $ python example.py 
+          this is the default behaviour!
     
     Some execution examples
         $ python example.py 'foo'
@@ -29,6 +33,9 @@
 """
 from __future__ import print_function
 from pyrunner import *
+
+def default():
+    print("this is the default behaviour!")
 
 def foo(msg='hello'):
     """Let foo speak
