@@ -52,6 +52,7 @@ def run(*args, **kwargs):
 
     proc = Popen(arguments, stdin=PIPE, stdout=PIPE, stderr=PIPE, **kwargs)
     stdout, stderr = proc.communicate(input)
+
     return proc.returncode, stdout, stderr
 
 # --- internally used functions
@@ -61,6 +62,9 @@ def parse_args(args):
                                      description='A script for writing and automating tasks in python')
 
     parser.add_argument('function', nargs='*')
+    parser.add_argument('-H', '--hidden',
+                        help='show functions which have a name starting with _ (underscore)',
+                        action='store_true')
     parser.add_argument('-l', '--list', 
                         help='lists all the available functions',
                         action='store_true')
@@ -114,20 +118,22 @@ def format_docstring(docstring, indent=' '*4):
         lines.append(fill(line, width=80, initial_indent=indent, subsequent_indent=indent))
     return '\n'.join(lines)
 
-def get_functions(globals_dict, only_file=None):
+def get_functions(globals_dict, only_file=None, show_hidden=False):
     # collect all the functions
     this_file = os.path.abspath(__file__)
 
-    def keep_item(value):
+    def keep_item((name, value)):
         dfile = lambda: inspect.getabsfile(value)
+        is_hidden_name = lambda: name.startswith('_')
 
         keep = True
+        keep = keep and (show_hidden or not is_hidden_name())
         keep = keep and inspect.isfunction(value)
         keep = keep and dfile() != this_file
         keep = keep and (not only_file or dfile() == only_file) 
         return keep
     
-    return dict(filter(lambda i: i if keep_item(i[1]) else None, globals_dict.items()))
+    return dict(filter(lambda i: i if keep_item(i) else None, globals_dict.items()))
 
 def action_list_functions(functions):
     print("Commands")
@@ -155,7 +161,7 @@ def main(globals_dict=None, args=None, commandfile=None,  default=DEFAULT_ACTION
         finfo = inspect.getframeinfo(frame)
         commandfile = os.path.abspath(finfo.filename)
         
-    functions = get_functions(globals_dict, only_file=commandfile)
+    functions = get_functions(globals_dict, only_file=commandfile, show_hidden=parsed.hidden)
 
     if parsed.list:
         action_list_functions(functions)

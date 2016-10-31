@@ -34,6 +34,10 @@
 from __future__ import print_function
 from pyrunner import *
 
+def _hidden():
+    """this function should not be displayed under normal use"""
+    print("hidden")    
+
 def default():
     print("this is the default behaviour!")
 
