@@ -17,8 +17,11 @@ from textwrap import fill
 from subprocess import Popen, PIPE, CalledProcessError
 
 from contextlib import contextmanager
+from collections import namedtuple
 
 import argparse
+
+RunResult = namedtuple('RunResult', ['returncode', 'stdout', 'stderr'])
 
 # --- constants
 DEFAULT_ACTION = 'default'
@@ -72,7 +75,7 @@ def run(*args, **kwargs):
     proc = Popen(arguments, stdin=PIPE, stdout=PIPE, stderr=PIPE, **kwargs)
     stdout, stderr = proc.communicate(input)
 
-    return proc.returncode, stdout, stderr
+    return RunResult(proc.returncode, stdout, stderr)
 
 # --- internally used functions
 
