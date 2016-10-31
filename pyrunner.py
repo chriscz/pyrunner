@@ -16,10 +16,29 @@ import inspect
 from textwrap import fill
 from subprocess import Popen, PIPE, CalledProcessError
 
+from contextlib import contextmanager
+
 import argparse
 
 # --- constants
 DEFAULT_ACTION = 'default'
+
+@contextmanager
+def cd(directory):
+    """
+    Context manager that changes the working directory in the given context.
+
+    Example
+
+    with cd('/home/'):
+        # do some stuff
+    """
+    old = os.getcwd()
+    try:
+        yield
+        os.chdir(directory)
+    finally:
+        os.chdir(old)
 
 def run(*args, **kwargs):
     """
