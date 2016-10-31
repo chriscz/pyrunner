@@ -18,7 +18,6 @@ from subprocess import Popen, PIPE, CalledProcessError
 
 from contextlib import contextmanager
 from collections import namedtuple
-from StringIO import StringIO
 
 import argparse
 
@@ -97,12 +96,43 @@ def run(*args, **kwargs):
             else:
                 arguments.append(i)
 
-    proc = Popen(arguments, stdin=PIPE, stdout=PIPE, stderr=PIPE, **kwargs)
+    def set_default_kwarg(key, default):    
+        kwargs[key] = kwargs.get(key, default)
+
+    set_default_kwarg('stdin', PIPE)
+    set_default_kwarg('stdout', PIPE)
+    set_default_kwarg('stderr', PIPE)
+
+
+    proc = Popen(arguments, **kwargs)
     stdout, stderr = proc.communicate(input)
 
     return RunResult(proc.returncode, stdout, stderr)
 
 # --- internally used functions
+def _patch_popen(Popen):
+    """
+    Patches Popen.communicate to take a timeout option that allows a process to
+    be timed out. The timeput is a millisecond float
+    """
+    from threading import Timer
+    _communicate = Popen.communicate
+
+    def communicate(self, *args, **kwargs):
+        timeout = kwargs.pop('timeout', None)
+
+        if timeout is not None:
+            timeout /= 1000.0
+            timer = Timer(timeout, self.kill)
+            try:
+                timer.start()
+                return _communicate(self, *args, **kwargs)
+            finally:
+                timer.cancel()
+        else:
+            return _communicate(self, *args, **kwargs)
+
+    Popen.communicate = communicate
 
 def parse_args(args):
     parser = argparse.ArgumentParser(prog='pyrunner.py', 
@@ -169,7 +199,8 @@ def get_functions(globals_dict, only_file=None, show_hidden=False):
     # collect all the functions
     this_file = os.path.abspath(__file__)
 
-    def keep_item((name, value)):
+    def keep_item(name_value):
+        (name, value) = name_value
         dfile = lambda: inspect.getabsfile(value)
         is_hidden_name = lambda: name.startswith('_')
 
@@ -230,3 +261,5 @@ def main(globals_dict=None, args=None, commandfile=None,  default=DEFAULT_ACTION
                 print("{} is not a recognized function".format(name))
                 sys.exit(1)
             exec(i, globals_dict, dict())
+
+_patch_popen(Popen)
