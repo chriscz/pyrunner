@@ -18,6 +18,7 @@ from subprocess import Popen, PIPE, CalledProcessError
 
 from contextlib import contextmanager
 from collections import namedtuple
+from StringIO import StringIO
 
 import argparse
 
@@ -27,11 +28,35 @@ RunResult = namedtuple('RunResult', ['returncode', 'stdout', 'stderr'])
 DEFAULT_ACTION = 'default'
 
 @contextmanager
+def silence():
+    """
+    suppresses any stdout / stderr output from the code in this context
+
+    Example
+    -------
+    >>> with silence():
+    >>>    print "hello"
+    >>> print "there"
+    there
+    """
+    o_out = sys.stdout
+    o_err = sys.stderr
+    try:
+        with open(os.devnull, 'w') as nil:
+            sys.stdout = nil
+            sys.stderr = nil
+            yield
+    finally:
+        sys.stderr = o_err
+        sys.stdout = o_out
+
+@contextmanager
 def cd(directory):
     """
     Context manager that changes the working directory in the given context.
 
     Example
+    -------
 
     with cd('/home/'):
         # do some stuff
