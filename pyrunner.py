@@ -38,8 +38,8 @@ def cd(directory):
     """
     old = os.getcwd()
     try:
-        yield
         os.chdir(directory)
+        yield
     finally:
         os.chdir(old)
 
